@@ -1,0 +1,14 @@
+[
+  {
+    "relation": [
+      "delegate_permission/common.handle_all_urls"
+    ],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "com.chandkabadiwala.app",
+      "sha256_cert_fingerprints": [
+        "9A:38:23:6B:7D:36:13:1F:EC:87:AE:F4:CC:D0:E8:73:75:92:78:59:BA:30:72:CD:01:75:34:7A:2F:6A:4E:01"
+      ]
+    }
+  }
+]

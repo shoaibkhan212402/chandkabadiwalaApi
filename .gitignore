@@ -1,0 +1,44 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+
+# Dependencies
+node_modules
+
+# Build output
+dist
+dist-ssr
+*.local
+
+# dotenv — keep .env.example tracked (it's the template)
+.env
+.env.local
+.env.production
+.env.*
+!.env.example
+
+# Editor directories and files
+.vscode/*
+!.vscode/extensions.json
+.idea
+.DS_Store
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# WhatsApp session (contains sensitive session data)
+whatsapp_auth_info/
+
+# Scratch / temp files
+scratch/
+
+# Uploaded user files — never commit
+uploads/*
+!uploads/.gitkeep

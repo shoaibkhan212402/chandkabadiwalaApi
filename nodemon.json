@@ -1,0 +1,8 @@
+{
+  "ignore": [
+    "uploads/*",
+    "test_vendor_flow.js",
+    "*.log"
+  ],
+  "delay": "1000"
+}
