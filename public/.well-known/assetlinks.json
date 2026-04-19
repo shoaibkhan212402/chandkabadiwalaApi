@@ -5,9 +5,10 @@
     ],
     "target": {
       "namespace": "android_app",
-      "package_name": "com.chandkabadiwala.app",
+      "package_name": "com.chandkabadiwala.main",
       "sha256_cert_fingerprints": [
-        "9A:38:23:6B:7D:36:13:1F:EC:87:AE:F4:CC:D0:E8:73:75:92:78:59:BA:30:72:CD:01:75:34:7A:2F:6A:4E:01"
+        "A3:C2:81:25:4E:5F:F7:53:9B:61:81:C6:3E:F8:8A:5D:D1:A7:41:70:D6:57:ED:7D:1A:D7:05:65:EE:6F:04:6B",
+        "1B:B2:5B:D6:8D:DC:49:D8:C4:0C:2A:C0:75:C8:8B:8E:67:D9:43:DA:49:2C:81:9C:9B:A3:D2:78:99:34:84:DB"
       ]
     }
   }
