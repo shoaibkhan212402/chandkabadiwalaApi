@@ -7,28 +7,28 @@ async function migrate() {
     // 1. Update Corrugated Box / Gatta (Carton, id: 3)
     await db.execute(
       'UPDATE scrap_items SET name = ?, rate = ?, image = ? WHERE id = ?',
-      ['Corrugated Box / Gatta', 9.00, '/uploads/corrugated_box.png', 3]
+      ['Corrugated Box / Gatta', 9.00, 'https://chandkabadiwala.com/images/corrugated_box.png', 3]
     );
     console.log('✅ Updated Carton -> Corrugated Box / Gatta (id 3)');
 
     // 2. Update Books / Copies (Books, id: 4)
     await db.execute(
       'UPDATE scrap_items SET name = ?, rate = ?, image = ? WHERE id = ?',
-      ['Books / Copies', 14.00, '/uploads/books_copies.png', 4]
+      ['Books / Copies', 14.00, 'https://chandkabadiwala.com/images/books_copies.png', 4]
     );
     console.log('✅ Updated Books -> Books / Copies (id 4)');
 
     // 3. Update A3/A4 Paper (Record Paper, id: 7)
     await db.execute(
       'UPDATE scrap_items SET name = ?, rate = ?, image = ? WHERE id = ?',
-      ['A3/A4 Paper', 14.50, '/uploads/a3_a4_paper.png', 7]
+      ['A3/A4 Paper', 14.50, 'https://chandkabadiwala.com/images/a3_a4_paper.png', 7]
     );
     console.log('✅ Updated Record Paper -> A3/A4 Paper (id 7)');
 
     // 4. Update News Paper (Newspaper, id: 2)
     await db.execute(
       'UPDATE scrap_items SET name = ?, rate = ?, image = ? WHERE id = ?',
-      ['News Paper', 14.50, '/uploads/newspaper.png', 2]
+      ['News Paper', 14.50, 'https://chandkabadiwala.com/images/newspaper.png', 2]
     );
     console.log('✅ Updated Newspaper -> News Paper (id 2)');
 

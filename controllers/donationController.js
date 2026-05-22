@@ -144,7 +144,7 @@ exports.generateCertificate = async (req, res) => {
 
     const fileName = `certificate_${donationId}.pdf`;
     const certPath = path.join(uploadDir, fileName);
-    const publicUrl = `/uploads/${fileName}`;
+    const publicUrl = `https://chandkabadiwala.com/images/${fileName}`;
 
     const doc = new PDFDocument({ size: 'A4', margin: 50 });
     const writeStream = fs.createWriteStream(certPath);
@@ -215,14 +215,7 @@ exports.generateCertificate = async (req, res) => {
 
     await new Promise(resolve => writeStream.on('finish', resolve));
 
-    // Update DB with the public URL
-    await db.execute(
-      'UPDATE donations SET certificate_url = ? WHERE id = ?',
-      [publicUrl, donationId]
-    );
-    console.log(`✅ [CERT] Certificate URL updated in DB: ${publicUrl}`);
-
-    // Send via WhatsApp
+    // Send via WhatsApp first (since it needs the local file at certPath)
     try {
       const msg = `🌟 *Thank You for Donating!*\n\n` +
         `Your contribution has been successfully verified.\n\n` +
@@ -237,6 +230,30 @@ exports.generateCertificate = async (req, res) => {
     } catch (waErr) {
       console.error('WhatsApp certificate delivery failed:', waErr.message);
     }
+
+    // Now upload to FTP and delete the local file
+    try {
+      const uploadToFTP = require('../utils/ftpUploader');
+      await uploadToFTP(certPath, fileName);
+      console.log(`✅ [CERT] Certificate uploaded to FTP: ${fileName}`);
+    } catch (ftpErr) {
+      console.error('❌ [CERT] FTP upload failed:', ftpErr);
+      // Clean up the local file if it still exists
+      if (fs.existsSync(certPath)) {
+        try {
+          fs.unlinkSync(certPath);
+        } catch (unlinkErr) {
+          console.error('Failed to unlink local certificate file after FTP failure:', unlinkErr);
+        }
+      }
+    }
+
+    // Update DB with the public URL (FTP URL)
+    await db.execute(
+      'UPDATE donations SET certificate_url = ? WHERE id = ?',
+      [publicUrl, donationId]
+    );
+    console.log(`✅ [CERT] Certificate URL updated in DB: ${publicUrl}`);
 
     if (res.headersSent) return;
     res.json({ success: true, certificate_url: publicUrl });

@@ -23,7 +23,14 @@ const uploadToFTP = async (localFilePath, remoteFileName) => {
         return `https://chandkabadiwala.com/images/${remoteFileName}`;
     } catch (err) {
         console.error('❌ FTP Upload Error:', err);
-        // Do not unlink file here, let uploadRoutes handle local fallback
+        // Clean up the local file even on failure to avoid leaking local uploads
+        if (fs.existsSync(localFilePath)) {
+            try {
+                fs.unlinkSync(localFilePath);
+            } catch (unlinkErr) {
+                console.error('Failed to unlink local file after FTP failure:', unlinkErr);
+            }
+        }
         throw err;
     } finally {
         client.close();

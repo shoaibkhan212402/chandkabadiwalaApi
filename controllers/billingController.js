@@ -153,7 +153,26 @@ exports.completePickup = async (req, res) => {
             await new Promise(resolve => writeStream.on('finish', resolve));
 
             const msg = `🌟 *Thank You for Donating!*\n\nYour donated items have been collected.\n${breakdown}\n\nWe have generated your formal Donation Certificate. Please find it attached.\nThanks to your contribution, materials valued at ₹${totalBill.toFixed(2)} have been directed towards social good! 💚`;
+            
+            // Send document via WhatsApp first
             await whatsapp.sendDocument(pickup.phone, certPath, `Donation_Certificate_${pickupId}.pdf`, msg);
+
+            // Now upload to FTP and delete the local file
+            try {
+              const uploadToFTP = require('../utils/ftpUploader');
+              await uploadToFTP(certPath, `certificate_${pickupId}.pdf`);
+              console.log(`✅ [BILLING CERT] Certificate uploaded to FTP for pickup #${pickupId}`);
+            } catch (ftpErr) {
+              console.error('❌ [BILLING CERT] FTP upload failed:', ftpErr);
+              // Clean up the local file if it still exists
+              if (fs.existsSync(certPath)) {
+                try {
+                  fs.unlinkSync(certPath);
+                } catch (unlinkErr) {
+                  console.error('Failed to unlink local certificate file after FTP failure:', unlinkErr);
+                }
+              }
+            }
 
             if (pickup.push_token) {
               pushService.sendPushNotification(
