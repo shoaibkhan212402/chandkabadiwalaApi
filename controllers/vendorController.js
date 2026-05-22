@@ -108,3 +108,47 @@ exports.getVendorWallet = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch wallet data' });
   }
 };
+// Check Vendor Availability for User
+exports.checkAvailability = async (req, res) => {
+  const { lat, lng, pincode } = req.body;
+  
+  if (!pincode && (!lat || !lng)) {
+    return res.status(400).json({ error: 'Location coordinates or pincode required' });
+  }
+
+  try {
+    // 1. Check by Pincode first (Fast)
+    if (pincode) {
+      const [pinRows] = await db.execute(
+        'SELECT v.user_id FROM vendors v JOIN users u ON v.user_id = u.id WHERE v.pincode = ? AND u.status = "active"',
+        [pincode]
+      );
+      if (pinRows.length > 0) {
+        return res.json({ available: true, message: 'Vendors available in your area!' });
+      }
+    }
+
+    // 2. Check by Distance (20km radius)
+    if (lat && lng) {
+      const [vendors] = await db.execute(
+        `SELECT v.user_id, v.lat, v.lng, v.service_range,
+        (6371 * acos(cos(radians(?)) * cos(radians(v.lat)) * cos(radians(v.lng) - radians(?)) + sin(radians(?)) * sin(radians(v.lat)))) AS distance
+        FROM vendors v
+        JOIN users u ON v.user_id = u.id
+        WHERE u.status = "active"
+        HAVING distance <= LEAST(v.service_range, 20)
+        ORDER BY distance ASC`,
+        [lat, lng, lat]
+      );
+
+      if (vendors.length > 0) {
+        return res.json({ available: true, message: 'Vendors available nearby!' });
+      }
+    }
+
+    res.json({ available: false, message: 'We are currently unable to proceed in your location. No vendors nearby.' });
+  } catch (err) {
+    console.error('Check Availability Error:', err);
+    res.status(500).json({ error: 'Failed to check availability' });
+  }
+};

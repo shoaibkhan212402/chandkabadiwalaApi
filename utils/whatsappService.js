@@ -49,18 +49,22 @@ const startWhatsApp = async () => {
       const statusCode = lastDisconnect?.error?.output?.statusCode;
       let shouldReconnect = statusCode !== DisconnectReason.loggedOut;
       
-      console.log(`❌ WhatsApp connection closed. Should Reconnect: ${shouldReconnect}`);
+      console.log(`❌ WhatsApp connection closed. Status: ${statusCode}. Reason: ${lastDisconnect?.error?.message}. Should Reconnect: ${shouldReconnect}`);
       isReady = false;
       latestQrUrl = null;
 
       if (shouldReconnect) {
-        // Prevent instant loop - wait 10s before retry
-        console.log("🔄 Scheduling reconnection in 10s...");
+        // Implementation of backoff to prevent DB exhaustion
+        const delay = 10000; // 10 seconds
+        console.log(`🔄 Scheduling reconnection in ${delay/1000}s...`);
         setTimeout(() => {
-          if (!isReady) startWhatsApp();
-        }, 10000);
+          if (!isReady) {
+            console.log("🔄 Retrying WhatsApp connection...");
+            startWhatsApp();
+          }
+        }, delay);
       } else {
-        console.log("⚠️ Logged out from WhatsApp. Need to scan QR again.");
+        console.log("⚠️ Logged out or critical error. Manual intervention required.");
       }
     } else if (connection === "open") {
       console.log("✅ WhatsApp Connection Opened!");

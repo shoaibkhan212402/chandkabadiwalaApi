@@ -12,5 +12,6 @@ router.use(subscriptionAuth);
 router.get('/business-preview', vendorController.getBusinessPreview);
 router.post('/donate', vendorController.processDonation);
 router.get('/wallet', vendorController.getVendorWallet);
+router.post('/check-availability', vendorController.checkAvailability);
 
 module.exports = router;

@@ -7,12 +7,18 @@ const db = require('../config/db');
  * the exact same WhatsApp Web session without re-scanning QR codes.
  */
 const useMySQLAuthState = async (sessionId = 'default') => {
+    // Simple in-memory cache to reduce DB load
+    const cache = new Map();
+
     // 1. Helper to Read from DB
     const readData = async (id) => {
+        if (cache.has(id)) return cache.get(id);
         try {
             const [rows] = await db.query('SELECT data FROM whatsapp_auth WHERE session_id = ?', [id]);
             if (rows.length > 0) {
-                return JSON.parse(rows[0].data, BufferJSON.reviver);
+                const parsed = JSON.parse(rows[0].data, BufferJSON.reviver);
+                cache.set(id, parsed);
+                return parsed;
             }
             return null;
         } catch (error) {
@@ -24,6 +30,7 @@ const useMySQLAuthState = async (sessionId = 'default') => {
     // 2. Helper to Write to DB
     const writeData = async (data, id) => {
         try {
+            cache.set(id, data);
             const value = JSON.stringify(data, BufferJSON.replacer);
             // Insert or Update (Upsert)
             await db.query(
@@ -38,6 +45,7 @@ const useMySQLAuthState = async (sessionId = 'default') => {
     // 3. Helper to Delete from DB
     const removeData = async (id) => {
         try {
+            cache.delete(id);
             await db.query('DELETE FROM whatsapp_auth WHERE session_id = ?', [id]);
         } catch (error) {
             console.error('MySQL Delete Error:', error);

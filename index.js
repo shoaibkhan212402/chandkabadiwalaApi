@@ -91,10 +91,19 @@ app.use(express.static(path.join(__dirname, "public"), {
   dotfiles: 'allow' // Crucial for serving .well-known hidden folder
 }));
 
-// Explicitly serve assetlinks.json to ensure correct content-type for some hostings
+// Explicitly serve assetlinks.json (Look for it in public/assetlinks.json for easier deployment)
 app.get("/.well-known/assetlinks.json", (req, res) => {
+  const filePath = path.join(__dirname, "public", "assetlinks.json");
   res.setHeader("Content-Type", "application/json");
-  res.sendFile(path.join(__dirname, "public", ".well-known", "assetlinks.json"));
+  res.sendFile(filePath, (err) => {
+    if (err) {
+      console.error("AssetLinks Error:", err);
+      res.status(404).json({
+        error: "AssetLinks file not found on server.",
+        required_path: "public/assetlinks.json"
+      });
+    }
+  });
 });
 
 app.get("/", (req, res) => {
@@ -120,9 +129,18 @@ const initDB = async () => {
     // Test query
     const [rows] = await db.query("SELECT 1 + 1 AS result");
     console.log(
-      "✅ Database connection test successful,  Result:",
-      rows[0].result,
+      "✅ Database connection test successful.",
     );
+
+    // 🛡️ Stronger Optimization: Check if the database has any tables already
+    const [allTables] = await db.query("SHOW TABLES");
+    if (allTables.length > 5 && env.nodeEnv !== 'production') {
+      console.log(`ℹ️ Database has ${allTables.length} tables. Skipping heavy migrations to save hourly connection limits.`);
+      // Start WhatsApp Service
+      const whatsappService = require("./utils/whatsappService");
+      whatsappService.initWhatsApp();
+      return;
+    }
 
     // Create Users table
     await db.execute(`
@@ -158,6 +176,7 @@ const initDB = async () => {
         upi_id VARCHAR(255),
         designation VARCHAR(255),
         pincode VARCHAR(10),
+        service_range INT DEFAULT 35,
         status ENUM('pending', 'active', 'inactive') DEFAULT 'pending',
         FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
       )
@@ -330,6 +349,7 @@ const initDB = async () => {
       "ENUM('customer', 'vendor', 'admin') NULL",
     );
     await safeAddColumn("pickups", "cancelled_at", "TIMESTAMP NULL");
+    await safeAddColumn("vendors", "service_range", "INT DEFAULT 35");
 
     // Pickup step 2 details
     await safeAddColumn(

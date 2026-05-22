@@ -13,13 +13,30 @@ const otpLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// App Link rate limiter to prevent spam (Max 5 requests every 10 minutes per IP)
+const appLinkLimiter = rateLimit({
+  windowMs: 10 * 60 * 1000, 
+  max: 5, 
+  message: { error: 'Too many app link requests, please try again after 10 minutes.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // @route   POST /api/auth/send-otp
 // @desc    Send OTP via WhatsApp (secured strictly with Rate Limiter)
 router.post('/send-otp', otpLimiter, authController.sendOTP);
 
+// @route   POST /api/auth/send-app-link
+// @desc    Send App Download Link via WhatsApp
+router.post('/send-app-link', appLinkLimiter, authController.sendAppLink);
+
 // @route   POST /api/auth/verify-otp
 // @desc    Verify OTP and return JWT
 router.post('/verify-otp', authController.verifyOTP);
+
+// @route   POST /api/auth/refresh-token
+// @desc    Get new access token using refresh token
+router.post('/refresh-token', authController.refreshToken);
 
 // @route   POST /api/auth/register-vendor
 // @desc    Vendor sign-up journey

@@ -61,17 +61,35 @@ exports.createPickup = async (req, res) => {
          WHERE u.role = 'vendor' AND u.status = 'active'`
       );
 
-      // Filter vendors within 20km radius if customer gave coordinates
-      let nearbyVendors = vendors;
-      if (lat && lng) {
+      // Extract 6-digit pincode from customer address
+      const customerPincodeMatch = address ? address.match(/\b\d{6}\b/) : null;
+      const customerPincode = customerPincodeMatch ? customerPincodeMatch[0] : null;
+
+      // Filter vendors strictly within 20km radius OR matching Pincode
+      let nearbyVendors = [];
+      if ((lat && lng) || customerPincode) {
         nearbyVendors = vendors.filter(v => {
-          if (v.v_lat && v.v_lng) {
+          let isNearby = false;
+
+          // 1. Check Distance (if both have GPS)
+          if (lat && lng && v.v_lat && v.v_lng) {
             const dist = getDistanceKm(parseFloat(lat), parseFloat(lng), v.v_lat, v.v_lng);
-            return dist <= 20; // 20km radius
+            if (dist <= 20) isNearby = true; // Strict 20km radius
           }
-          return true; // notify vendors with no coordinates regardless
+
+          // 2. Check Pincode (if distance failed or GPS missing)
+          if (!isNearby && customerPincode && v.v_address) {
+            const vPincodeMatch = v.v_address.match(/\b\d{6}\b/);
+            if (vPincodeMatch && vPincodeMatch[0] === customerPincode) {
+              isNearby = true;
+            }
+          }
+
+          return isNearby;
         });
-        if (nearbyVendors.length === 0) nearbyVendors = vendors; // fallback: notify all
+      } else {
+        // If customer has no coordinates AND no pincode, we can't filter safely.
+        nearbyVendors = [];
       }
 
       // Get item details for notification

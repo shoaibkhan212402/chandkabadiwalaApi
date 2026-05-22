@@ -12,6 +12,11 @@ exports.sendOTP = async (req, res) => {
   const { phone, role, isRegistering } = req.body;
   if (!phone) return res.status(400).json({ error: 'Phone is required' });
 
+  // Play Store Test Account Bypass
+  if (phone === '9999999999' || phone === '8888888888') {
+    return res.json({ message: 'OTP sent successfully!' });
+  }
+
   // If logging in as vendor (not registering), check if vendor exists
   if (role === 'vendor' && !isRegistering) {
     const db = require('../config/db');
@@ -53,10 +58,14 @@ exports.verifyOTP = async (req, res) => {
   const { phone, otp } = req.body;
 
   try {
-    const cachedOtp = await redisClient.get(`${OTP_PREFIX}${phone}`);
+    const isTestAccount = (phone === '9999999999' || phone === '8888888888') && otp === '1234';
 
-    if (!cachedOtp || otp !== cachedOtp) {
-      return res.status(400).json({ error: 'Invalid or expired OTP' });
+    if (!isTestAccount) {
+      const cachedOtp = await redisClient.get(`${OTP_PREFIX}${phone}`);
+
+      if (!cachedOtp || otp !== cachedOtp) {
+        return res.status(400).json({ error: 'Invalid or expired OTP' });
+      }
     }
 
     let user = await User.findByPhone(phone);
@@ -92,12 +101,45 @@ exports.verifyOTP = async (req, res) => {
     }
 
     // JWT Auth
-    const token = jwt.sign({ id: user.id, role: user.role }, env.jwtSecret, { expiresIn: '7d' });
+    const { accessToken, refreshToken } = generateTokens(user);
 
     await redisClient.del(`${OTP_PREFIX}${phone}`); // cleanup
-    res.json({ token, user, message: `Welcome ${user.role}!` });
+    res.json({ token: accessToken, refreshToken, user, message: `Welcome ${user.role}!` });
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+};
+
+const generateTokens = (user) => {
+  const accessToken = jwt.sign(
+    { id: user.id, role: user.role, phone: user.phone },
+    env.jwtSecret,
+    { expiresIn: '1h' } // Shorter lived access token
+  );
+  const refreshToken = jwt.sign(
+    { id: user.id },
+    env.jwtSecret,
+    { expiresIn: '30d' } // 30 days refresh token
+  );
+  return { accessToken, refreshToken };
+};
+
+exports.refreshToken = async (req, res) => {
+  const { refreshToken } = req.body;
+  if (!refreshToken) return res.status(400).json({ error: 'Refresh token required' });
+
+  try {
+    const decoded = jwt.verify(refreshToken, env.jwtSecret);
+    const user = await User.findById(decoded.id);
+
+    if (!user || user.status === 'inactive') {
+      return res.status(403).json({ error: 'User not found or inactive' });
+    }
+
+    const tokens = generateTokens(user);
+    res.json(tokens);
+  } catch (err) {
+    res.status(401).json({ error: 'Invalid or expired refresh token' });
   }
 };
 
@@ -118,7 +160,15 @@ exports.registerVendor = async (req, res) => {
     upi_id,
     designation,
     pincode,
+    service_range,
+    bank_name,
+    account_number,
+    ifsc_code,
   } = req.body;
+
+  if (!phone) {
+    return res.status(400).json({ error: 'Phone number is required for registration.' });
+  }
 
   try {
     const db = require('../config/db');
@@ -145,7 +195,7 @@ exports.registerVendor = async (req, res) => {
       await db.execute('UPDATE users SET subscription_expires_at = ? WHERE id = ?', [trialExpiry, userId]);
     }
 
-    // Upsert Vendor Profile with all documents
+    // Upsert Vendor Profile with all documents & bank details
     await Vendor.upsertDetailed({
       userId,
       businessName,
@@ -161,13 +211,18 @@ exports.registerVendor = async (req, res) => {
       upi_id,
       designation,
       pincode,
+      service_range,
+      bank_name,
+      account_number,
+      ifsc_code,
     });
 
-    const token = jwt.sign({ id: userId, role: 'vendor' }, env.jwtSecret, { expiresIn: '7d' });
+    const { accessToken, refreshToken } = generateTokens({ id: userId, role: 'vendor', phone });
 
     res.status(200).json({
       message: 'Registration successful!',
-      token,
+      token: accessToken,
+      refreshToken,
       user: { ...userData, id: userId }
     });
   } catch (err) {
@@ -237,6 +292,7 @@ exports.updateProfile = async (req, res) => {
     name,
     designation,
     profileImage,
+    service_range,
     address, address_line1, address_area, address_city,
     address_state, address_pincode, address_lat, address_lng
   } = req.body;
@@ -278,6 +334,11 @@ exports.updateProfile = async (req, res) => {
       if (name) { updates.push('full_name = ?'); params.push(name); }
       if (designation) { updates.push('designation = ?'); params.push(designation); }
       if (profileImage) { updates.push('shop_photo = ?'); params.push(profileImage); }
+      if (service_range) {
+        const finalRange = Math.min(Math.max(parseInt(service_range) || 35, 1), 50);
+        updates.push('service_range = ?');
+        params.push(finalRange);
+      }
 
       if (updates.length > 0) {
         params.push(userId);
@@ -353,3 +414,33 @@ exports.deleteAccount = async (req, res) => {
     res.status(500).json({ error: 'Critical failure during account deletion process. Please contact support.' });
   }
 };
+
+exports.sendAppLink = async (req, res) => {
+  const { phone } = req.body;
+  if (!phone) return res.status(400).json({ error: 'Phone number is required' });
+
+  // Play Store Test Account Bypass
+  if (phone === '9999999999' || phone === '8888888888') {
+    return res.json({ message: 'App link sent successfully via WhatsApp!' });
+  }
+
+  const appLink = 'https://play.google.com/store/apps/details?id=com.chandkabadiwala.main';
+  const msg = `👋 Welcome to Chand Kabadi Wala!\n\nDownload our mobile app to schedule scrap pickups, track your earnings, and get instant payouts.\n\n📥 Get it on Google Play Store:\n${appLink}`;
+
+  try {
+    const waRes = await whatsappService.sendMessage(phone, msg);
+    if (!waRes.success) {
+      return res.status(500).json({ error: waRes.error || 'Failed to send WhatsApp message. Please ensure WhatsApp server is active.' });
+    }
+
+    if (env.nodeEnv !== 'production') {
+      console.log(`📲 App download link dispatched via WhatsApp to: ${phone}`);
+    }
+
+    res.json({ message: 'App download link has been sent via WhatsApp!' });
+  } catch (err) {
+    console.error('⚠️ WhatsApp app link service error:', err.message);
+    res.status(500).json({ error: 'WhatsApp service is not available right now.' });
+  }
+};
+
