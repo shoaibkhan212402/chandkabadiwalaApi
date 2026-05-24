@@ -31,6 +31,7 @@ const port = env.port;
 app.use(helmet({
   contentSecurityPolicy: env.nodeEnv === "production" ? undefined : false,
   crossOriginEmbedderPolicy: false, // Required for Expo/RN clients
+  referrerPolicy: { policy: "strict-origin-when-cross-origin" },
 }));
 app.use(compression());
 app.use(morgan(env.nodeEnv === "production" ? "combined" : "dev"));
