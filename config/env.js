@@ -32,7 +32,7 @@ const env = {
   corsOrigins: parseOrigins(
     optionalEnv(
       'CORS_ORIGINS',
-      'https://chandkabadiwala.com,https://api.chandkabadiwala.com,http://localhost:3000,http://localhost:5173',
+      'https://chandkabadiwala.com,https://www.chandkabadiwala.com,https://api.chandkabadiwala.com,https://chandkabadiwala.vercel.app,http://localhost:3000,http://localhost:5173,http://chandkabadiwala.com,http://www.chandkabadiwala.com',
     ),
   ),
 };
