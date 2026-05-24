@@ -37,7 +37,7 @@ app.use(compression());
 app.use(morgan(env.nodeEnv === "production" ? "combined" : "dev"));
 app.use(
   cors({
-    origin: env.corsOrigins,
+    origin: true,
     methods: ["GET", "POST", "PUT", "PATCH", "DELETE"],
     allowedHeaders: ["Content-Type", "Authorization"],
     credentials: true,
